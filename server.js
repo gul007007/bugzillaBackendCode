@@ -71,7 +71,7 @@ app.use(
     saveUninitialized: false,
     cookie: {
       sameSite: "lax",
-      secure: true, // Set to true in production with HTTPS
+      secure: true,
       httpOnly: true,
     },
   })
@@ -94,11 +94,7 @@ app.use("/api/bugs", require("./routes/bugRoutes"));
 // Serve uploads directory for images
 app.use("/uploads", express.static("uploads"));
 
-// Serve React frontend (commented out for separate deployment)
-// app.use(express.static(path.join(__dirname, "../../frontend/build")));
-// app.get("*", (req, res) => {
-//   res.sendFile(path.join(__dirname, "../../frontend/build", "index.html"));
-// });
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
