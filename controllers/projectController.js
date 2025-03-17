@@ -294,8 +294,6 @@ exports.deleteProject = async (req, res) => {
   }
 };
 
-
-
 exports.filterProjects = async (req, res) => {
   try {
     if (!req.session.user) {
@@ -309,16 +307,104 @@ exports.filterProjects = async (req, res) => {
         .json({ error: "Access denied: Insufficient permissions" });
     }
 
-    const { name } = req.query;
+    const { name, developerEmail, qaEmail, bugCount } = req.query;
     let query = {};
+    let aggregationPipeline = [];
+
+    // Filter by project name (case-insensitive)
     if (name) {
-      query.name = { $regex: name, $options: "i" }; // Case-insensitive search
+      query.name = { $regex: name, $options: "i" };
     }
 
-    const projects = await Project.find(query)
-      .populate("developerIds", "name email")
-      .populate("qaIds", "name email")
-      .populate("managerId", "name email");
+    // Start with the base match
+    aggregationPipeline.push({ $match: query });
+
+    // Lookup developer and QA user details
+    aggregationPipeline.push(
+      {
+        $lookup: {
+          from: "users",
+          localField: "developerIds",
+          foreignField: "_id",
+          as: "developers",
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "qaIds",
+          foreignField: "_id",
+          as: "qas",
+        },
+      }
+    );
+
+    // Filter by developer email
+    if (developerEmail) {
+      aggregationPipeline.push({
+        $match: {
+          developers: {
+            $elemMatch: { email: { $regex: developerEmail, $options: "i" } },
+          },
+        },
+      });
+    }
+
+    // Filter by QA email
+    if (qaEmail) {
+      aggregationPipeline.push({
+        $match: {
+          qas: { $elemMatch: { email: { $regex: qaEmail, $options: "i" } } },
+        },
+      });
+    }
+
+    // Lookup bugs and count them per project
+    aggregationPipeline.push(
+      {
+        $lookup: {
+          from: "bugs",
+          localField: "_id",
+          foreignField: "projectId",
+          as: "bugs",
+        },
+      },
+      {
+        $addFields: {
+          bugCount: { $size: "$bugs" },
+        },
+      }
+    );
+
+    // Filter by bug count (e.g., >, <, =)
+    if (bugCount) {
+      const [operator, value] = bugCount.split("_"); // e.g., "gt_5" or "lt_10"
+      const numValue = parseInt(value, 10);
+      if (operator === "gt") {
+        aggregationPipeline.push({ $match: { bugCount: { $gt: numValue } } });
+      } else if (operator === "lt") {
+        aggregationPipeline.push({ $match: { bugCount: { $lt: numValue } } });
+      } else if (operator === "eq") {
+        aggregationPipeline.push({ $match: { bugCount: numValue } });
+      } else {
+        return res.status(400).json({ error: "Invalid bug count operator" });
+      }
+    }
+
+    // Project the final fields
+    aggregationPipeline.push({
+      $project: {
+        name: 1,
+        developerIds: 1,
+        qaIds: 1,
+        managerId: 1,
+        bugCount: 1,
+        developers: { name: 1, email: 1 },
+        qas: { name: 1, email: 1 },
+      },
+    });
+
+    const projects = await Project.aggregate(aggregationPipeline);
 
     res.status(200).json({ projects });
   } catch (error) {

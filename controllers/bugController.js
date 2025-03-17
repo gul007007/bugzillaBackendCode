@@ -396,39 +396,6 @@ exports.lockBug = async (req, res) => {
   }
 };
 
-// This work fine than above
-// exports.lockBug = async (req, res) => {
-//   try {
-//     console.log(
-//       `lockBug function called for bugId: ${
-//         req.params.bugId
-//       } at ${new Date().toISOString()}`
-//     );
-//     if (!req.session.user) {
-//       console.log("Unauthorized: No session user");
-//       return res.status(401).json({ error: "Unauthorized: Please log in" });
-//     }
 
-//     const bugId = req.params.bugId;
-//     console.log("Fetching bug with ID:", bugId);
-//     const bug = await Bug.findById(bugId);
-//     if (!bug) {
-//       console.log("Bug not found with ID:", bugId);
-//       return res.status(404).json({ error: "Bug not found" });
-//     }
-
-//     bug.locked = !bug.locked;
-//     await bug.save();
-//     console.log("Bug locked status toggled, saved:", bug);
-
-//     res.status(200).json({
-//       message: `Bug ${bug.locked ? "locked" : "unlocked"} successfully`,
-//       bug,
-//     });
-//   } catch (error) {
-//     console.error("Lock bug error:", error.stack);
-//     res.status(500).json({ error: "An error occurred. Please try again." });
-//   }
-// };
 
 module.exports = exports;

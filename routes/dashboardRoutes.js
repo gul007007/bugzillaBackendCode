@@ -44,11 +44,7 @@ router.get(
   projectController.getManagerDashboard
 );
 
-// router.get(
-//   "/manager-dashboard",
-//   checkPermissions("view_all_projects"),
-//   projectController.getProjects
-// );
+
 
 // New routes for update and delete
 router.put(
