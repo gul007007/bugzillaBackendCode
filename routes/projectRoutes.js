@@ -2,13 +2,50 @@ const express = require("express");
 const router = express.Router();
 const projectController = require("../controllers/projectController");
 const bugController = require("../controllers/bugController");
-const restrictToRole = require("../middleware/restrictToRole");
+const checkPermissions = require("../middleware/checkPermissions");
 
-router.post("/", restrictToRole("Manager"), projectController.createProject);
-router.put("/", restrictToRole("Manager"), projectController.updateProject);
-router.get("/:projectId/bugs", restrictToRole("Manager"), projectController.getProjectBugs);
-router.get("/", restrictToRole("Manager"), projectController.listProjects);
-router.get("/qa", restrictToRole("QA"), projectController.listQAProjects);
-router.get("/:projectId/developers", restrictToRole("QA"), projectController.getProjectDevelopers); // Already correct, but confirm
+router.post(
+  "/",
+  checkPermissions("create_project"),
+  projectController.createProject
+);
+
+router.put("/", checkPermissions(["edit_project"]), projectController.updateProject);
+// router.put(
+//   "/",
+//   checkPermissions(["assign_users", "edit_project"]),
+//   projectController.updateProject
+// );
+router.get(
+  "/:projectId/bugs",
+  checkPermissions("view_bugs"),
+  projectController.getProjectBugs
+);
+router.get(
+  "/",
+  checkPermissions("view_all_projects"),
+  projectController.getProjects
+);
+router.get(
+  "/qa",
+  checkPermissions("view_assigned_projects"),
+  projectController.getQAProjects
+);
+router.get(
+  "/:projectId/developers",
+  checkPermissions("view_assigned_projects"),
+  projectController.getProjectDevelopers
+);
+router.delete(
+  "/:projectId",
+  checkPermissions("delete_project"),
+  projectController.deleteProject
+);
+
+router.get(
+  "/filter",
+  checkPermissions(["filter_projects"]),
+  projectController.filterProjects
+);
 
 module.exports = router;
