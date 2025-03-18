@@ -16,7 +16,9 @@ app.use(
   session({
     secret: process.env.SECRET_KEY || "your-secret-key",
     resave: false,
+    origin: "http://localhost:5173/",
     saveUninitialized: false,
+    credentials: true,
     cookie: {
       sameSite: "lax",
       secure: false, // Set to true in production with HTTPS
