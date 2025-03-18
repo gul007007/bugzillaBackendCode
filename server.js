@@ -1,5 +1,10 @@
 const express = require("express");
 const session = require("express-session");
+const mongoose = require("mongoose");
+const authRoutes = require("./routes/authRoutes");
+const projectRoutes = require("./routes/projectRoutes");
+const bugRoutes = require("./routes/bugRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes"); // Add this
 const path = require("path");
 require("dotenv").config();
 
@@ -11,7 +16,9 @@ app.use(
   session({
     secret: process.env.SECRET_KEY || "your-secret-key",
     resave: false,
+    origin: "http://localhost:5173/",
     saveUninitialized: false,
+    credentials: true,
     cookie: {
       sameSite: "lax",
       secure: false, // Set to true in production with HTTPS
@@ -29,10 +36,10 @@ connectToDatabase()
   });
 
 // Routes
-app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api", require("./routes/dashboardRoutes"));
-app.use("/api/projects", require("./routes/projectRoutes"));
-app.use("/api/bugs", require("./routes/bugRoutes"));
+app.use("/api/auth", authRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/bugs", bugRoutes);
+app.use("/api", dashboardRoutes);
 
 // Serve uploads directory for images
 app.use("/uploads", express.static("uploads"));
