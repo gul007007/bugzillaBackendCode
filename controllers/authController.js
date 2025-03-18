@@ -36,44 +36,44 @@ exports.signup = async (req, res) => {
   }
 };
 
-exports.login = async (req, res) => {
-  const { email, password } = req.body;
+// exports.login = async (req, res) => {
+//   const { email, password } = req.body;
 
-  try {
-    const user = await User.findOne({ email }).populate("role");
-    if (!user) {
-      return res.status(400).json({ error: "Invalid email or password" });
-    }
+//   try {
+//     const user = await User.findOne({ email }).populate("role");
+//     if (!user) {
+//       return res.status(400).json({ error: "Invalid email or password" });
+//     }
 
-    // Compare password (assumes password is hashed with bcrypt)
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ error: "Invalid email or password" });
-    }
+//     // Compare password (assumes password is hashed with bcrypt)
+//     const isMatch = await bcrypt.compare(password, user.password);
+//     if (!isMatch) {
+//       return res.status(400).json({ error: "Invalid email or password" });
+//     }
 
-    // Store user in session with populated role
-    req.session.user = {
-      id: user._id,
-      email: user.email,
-      name: user.name, // test
-      role: user.role, // This will be the full role document (e.g., { _id, name, permissions })
-    };
-    // Debug log to verify session data
-    console.log("Session user after login:", req.session.user);
+//     // Store user in session with populated role
+//     req.session.user = {
+//       id: user._id,
+//       email: user.email,
+//       name: user.name, // test
+//       role: user.role, // This will be the full role document (e.g., { _id, name, permissions })
+//     };
+//     // Debug log to verify session data
+//     console.log("Session user after login:", req.session.user);
 
-    res
-      .status(200)
-      .json({ message: "Login successful!", role: user.role.name });
-  } catch (error) {
-    console.error("Login error:", error.stack);
-    res
-      .status(500)
-      .json({
-        error: "An error occurred. Please try again.",
-        details: error.message,
-      });
-  }
-};
+//     res
+//       .status(200)
+//       .json({ message: "Login successful!", role: user.role.name });
+//   } catch (error) {
+//     console.error("Login error:", error.stack);
+//     res
+//       .status(500)
+//       .json({
+//         error: "An error occurred. Please try again.",
+//         details: error.message,
+//       });
+//   }
+// };
 
 exports.logout = (req, res) => {
   req.session.destroy((err) => {
@@ -83,3 +83,50 @@ exports.logout = (req, res) => {
     res.status(200).json({ message: "Logged out successfully" });
   });
 };
+
+
+// avoid ~ bruteforce
+
+const { isWithinLockoutPeriod, incrementFailedAttempts, resetFailedAttempts } = require("../utils/authUtils");
+
+exports.login = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await User.findOne({ email }).populate("role");
+    if (!user) {
+      return res.status(400).json({ error: "Invalid email or password" });
+    }
+
+    if (isWithinLockoutPeriod(user)) {
+      return res.status(403).json({
+        error: "Account is temporarily locked due to multiple failed login attempts. Please try again later.",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      await incrementFailedAttempts(user);
+      return res.status(400).json({ error: "Invalid email or password" });
+    }
+
+    await resetFailedAttempts(user);
+
+    req.session.user = {
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    };
+    console.log("Session user after login:", req.session.user);
+
+    res.status(200).json({ message: "Login successful!", role: user.role.name });
+  } catch (error) {
+    console.error("Login error:", error.stack);
+    res.status(500).json({
+      error: "An error occurred. Please try again.",
+      details: error.message,
+    });
+  }
+};
+
